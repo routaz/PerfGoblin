@@ -1,0 +1,63 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:VisualElement name="perfgoblin-root" class="perfgoblin-overlay">
+    <!-- Header -->
+    <ui:VisualElement class="pp-header">
+      <ui:Label text="PERFGOBLIN" class="pp-title" />
+      <ui:VisualElement style="flex-direction: row; align-items: center;">
+        <ui:Label name="pp-version" text="v0.1.0" class="pp-version" />
+        <ui:Label name="pp-minimize" text="—" class="pp-minimize-btn" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="pp-body">
+
+    <!-- FPS Panel -->
+    <ui:VisualElement name="panel-fps" class="pp-panel">
+      <ui:VisualElement class="pp-fps-row">
+        <ui:Label name="fps-value" text="60" class="pp-fps-value" />
+        <ui:Label name="fps-target" text="/ 60 FPS" class="pp-fps-target" />
+        <ui:Label name="fps-ms" text="16.7ms" class="pp-fps-ms" />
+      </ui:VisualElement>
+      <ui:VisualElement class="pp-fps-minmax">
+        <ui:Label name="fps-min" text="Min: 60" class="pp-fps-stat" />
+        <ui:Label name="fps-avg" text="Avg: 60" class="pp-fps-stat" />
+        <ui:Label name="fps-max" text="Max: 60" class="pp-fps-stat" />
+      </ui:VisualElement>
+      <ui:VisualElement name="fps-graph" class="pp-fps-graph" />
+    </ui:VisualElement>
+
+    <!-- Memory Panel -->
+    <ui:VisualElement name="panel-memory" class="pp-panel">
+      <ui:VisualElement class="pp-panel-header">
+        <ui:VisualElement style="flex-direction: row; align-items: center;">
+          <ui:Label text="MEMORY" class="pp-panel-label" />
+          <ui:Label name="mem-mode" text="" class="pp-mem-mode" />
+        </ui:VisualElement>
+        <ui:VisualElement style="flex-direction: row; align-items: center;">
+          <ui:Label name="mem-editor-toggle" text="Editor" class="pp-mem-toggle" />
+          <ui:Label name="mem-total" text="0 MB" class="pp-mem-total" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+      <ui:VisualElement name="mem-bar" class="pp-mem-bar" />
+      <ui:VisualElement name="mem-legend" class="pp-mem-legend" />
+    </ui:VisualElement>
+
+    <!-- Scripts Panel -->
+    <ui:VisualElement name="panel-scripts" class="pp-panel">
+      <ui:VisualElement class="pp-panel-header">
+        <ui:Label text="SCRIPTS" class="pp-panel-label" />
+        <ui:Label name="scripts-count" text="0 active" class="pp-scripts-count" />
+      </ui:VisualElement>
+      <ui:ScrollView name="scripts-list" class="pp-scripts-list" />
+    </ui:VisualElement>
+
+    <!-- Spikes Panel -->
+    <ui:VisualElement name="panel-spikes" class="pp-panel pp-panel-last">
+      <ui:VisualElement class="pp-panel-header">
+        <ui:Label text="SPIKES" class="pp-panel-label" />
+        <ui:Label name="spikes-count" text="0 detected" class="pp-spikes-badge" />
+      </ui:VisualElement>
+      <ui:ScrollView name="spikes-list" class="pp-spikes-list" />
+    </ui:VisualElement>
+    </ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>

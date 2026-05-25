@@ -1,0 +1,19 @@
+{
+  "name": "com.perfgoblin.overlay",
+  "version": "0.1.0",
+  "displayName": "PerfGoblin",
+  "description": "Lightweight development performance overlay for Unity",
+  "unity": "2022.3",
+  "keywords": ["performance", "profiler", "overlay", "debug", "fps"],
+  "author": {
+    "name": "PerfGoblin"
+  },
+  "samples": [
+    {
+      "displayName": "Demo Scene",
+      "description": "Stress test scripts for testing PerfGoblin overlay",
+      "path": "Samples~/DemoScene"
+    }
+  ],
+  "dependencies": {}
+}
