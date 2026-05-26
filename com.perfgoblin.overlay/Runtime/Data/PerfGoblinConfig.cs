@@ -43,6 +43,11 @@ namespace PerfGoblin
         public float SpikeMultiplier = 2.0f;
         public int SpikeHistoryCapacity = 100;
 
+        // Auto Popup
+        public bool AutoPopupOnThreshold = false;
+        public float AutoPopupCooldownSeconds = 5f;
+        public float AutoDismissSeconds = 0f;
+
         // Overlay
         public OverlayPosition Position = OverlayPosition.TopRight;
         public bool CompactMode = false;
@@ -100,6 +105,9 @@ namespace PerfGoblin
             MaxDisplayedScripts = defaults.MaxDisplayedScripts;
             SpikeMultiplier = defaults.SpikeMultiplier;
             SpikeHistoryCapacity = defaults.SpikeHistoryCapacity;
+            AutoPopupOnThreshold = defaults.AutoPopupOnThreshold;
+            AutoPopupCooldownSeconds = defaults.AutoPopupCooldownSeconds;
+            AutoDismissSeconds = defaults.AutoDismissSeconds;
             Position = defaults.Position;
             CompactMode = defaults.CompactMode;
             OverlayOpacity = defaults.OverlayOpacity;

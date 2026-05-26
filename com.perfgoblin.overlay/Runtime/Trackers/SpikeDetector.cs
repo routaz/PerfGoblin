@@ -1,7 +1,9 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Unity.Profiling;
 
 namespace PerfGoblin
 {
@@ -10,16 +12,23 @@ namespace PerfGoblin
         public int FrameCount;
         public float FrameTimeMs;
         public float ExpectedFrameTimeMs;
+        public float TotalScriptTimeMs;
+        public string SpikeCategory;
+        public float SpikeCategoryMs;
         public List<ScriptTimingData> TopOffenders;
         public float TimeSinceStart;
     }
 
-    public class SpikeDetector
+    public class SpikeDetector : IDisposable
     {
         readonly PerfGoblinConfig _config;
         readonly FrameTimeTracker _frameTime;
         readonly ScriptTracker _scripts;
         readonly RingBuffer<SpikeEvent> _history;
+
+        // Subsystem profiler recorders for spike attribution
+        readonly List<string> _subsystemNames = new();
+        readonly List<ProfilerRecorder> _subsystemRecorders = new();
 
         int _spikeCountWindow;
         float _windowTimer;
@@ -45,11 +54,18 @@ namespace PerfGoblin
                 var freq = new Dictionary<string, int>();
                 foreach (var spike in _history.AsEnumerable())
                 {
-                    if (spike.TopOffenders == null) continue;
-                    foreach (var offender in spike.TopOffenders)
+                    if (!string.IsNullOrEmpty(spike.SpikeCategory))
                     {
-                        freq.TryGetValue(offender.ScriptName, out int c);
-                        freq[offender.ScriptName] = c + 1;
+                        freq.TryGetValue(spike.SpikeCategory, out int cc);
+                        freq[spike.SpikeCategory] = cc + 1;
+                    }
+                    else if (spike.TopOffenders != null)
+                    {
+                        foreach (var offender in spike.TopOffenders)
+                        {
+                            freq.TryGetValue(offender.ScriptName, out int c);
+                            freq[offender.ScriptName] = c + 1;
+                        }
                     }
                 }
                 string best = null;
@@ -74,6 +90,84 @@ namespace PerfGoblin
             _frameTime = frameTime;
             _scripts = scripts;
             _history = new RingBuffer<SpikeEvent>(config.SpikeHistoryCapacity);
+            InitSubsystemRecorders();
+        }
+
+        void InitSubsystemRecorders()
+        {
+            // First valid match per display name wins — order broadest marker first per category
+            var candidates = new (ProfilerCategory Cat, string Marker, string Display)[]
+            {
+                // Rendering — built-in + SRP/URP/HDRP
+                (ProfilerCategory.Render, "Camera.Render", "Rendering"),
+                (ProfilerCategory.Render, "ScriptableRenderPipeline.Render", "Rendering"),
+                (ProfilerCategory.Render, "RenderPipelineManager.DoRenderLoop_Internal", "Rendering"),
+                (ProfilerCategory.Render, "UniversalRenderPipeline.RenderSingleCameraInternal", "Rendering"),
+
+                // GPU / VSync wait
+                (ProfilerCategory.Render, "Gfx.WaitForPresentOnGfxThread", "GPU/VSync"),
+                (ProfilerCategory.Render, "Gfx.WaitForRenderThread", "GPU/VSync"),
+
+                // Physics
+                (new ProfilerCategory("Physics"), "Physics.Processing", "Physics"),
+                (new ProfilerCategory("Physics"), "FixedUpdate.PhysicsFixedUpdate", "Physics"),
+
+                // UI
+                (new ProfilerCategory("UI"), "UGUI.Rendering", "UI"),
+                (new ProfilerCategory("UI"), "Canvas.SendWillRenderCanvases", "UI"),
+                (ProfilerCategory.Render, "Canvas.SendWillRenderCanvases", "UI"),
+
+                // Animation
+                (new ProfilerCategory("Animation"), "Animators.Update", "Animation"),
+                (new ProfilerCategory("Animation"), "Directors.Update", "Animation"),
+
+                // GC
+                (ProfilerCategory.Memory, "GC.Collect", "GC"),
+                (ProfilerCategory.Memory, "GarbageCollector.CollectIncremental", "GC"),
+
+                // Loading / streaming
+                (new ProfilerCategory("Loading"), "Loading.ReadObject", "Loading"),
+                (new ProfilerCategory("Loading"), "AsyncReadManager.ReadFile", "Loading"),
+            };
+
+            var found = new HashSet<string>();
+            foreach (var (cat, marker, display) in candidates)
+            {
+                if (found.Contains(display)) continue;
+                try
+                {
+                    var rec = ProfilerRecorder.StartNew(cat, marker, 1);
+                    if (rec.Valid)
+                    {
+                        _subsystemNames.Add(display);
+                        _subsystemRecorders.Add(rec);
+                        found.Add(display);
+                    }
+                    else
+                    {
+                        rec.Dispose();
+                    }
+                }
+                catch { }
+            }
+        }
+
+        (string Name, float Ms) GetTopSubsystem()
+        {
+            string topName = null;
+            float topMs = 0f;
+            for (int i = 0; i < _subsystemRecorders.Count; i++)
+            {
+                var rec = _subsystemRecorders[i];
+                if (!rec.Valid) continue;
+                float ms = rec.LastValue / 1_000_000f;
+                if (ms > topMs)
+                {
+                    topMs = ms;
+                    topName = _subsystemNames[i];
+                }
+            }
+            return (topName, topMs);
         }
 
         public void Update()
@@ -104,17 +198,33 @@ namespace PerfGoblin
                     })
                     .ToList();
 
+                var (catName, catMs) = GetTopSubsystem();
+
                 _history.Push(new SpikeEvent
                 {
                     FrameCount = Time.frameCount,
                     FrameTimeMs = currentMs,
                     ExpectedFrameTimeMs = targetMs,
+                    TotalScriptTimeMs = _scripts.TotalScriptTimeMs,
+                    SpikeCategory = catName,
+                    SpikeCategoryMs = catMs,
                     TopOffenders = topOffenders,
                     TimeSinceStart = Time.realtimeSinceStartup
                 });
 
                 _spikeCountWindow++;
             }
+        }
+
+        public void Dispose()
+        {
+            for (int i = 0; i < _subsystemRecorders.Count; i++)
+            {
+                var rec = _subsystemRecorders[i];
+                if (rec.Valid) rec.Dispose();
+            }
+            _subsystemRecorders.Clear();
+            _subsystemNames.Clear();
         }
     }
 }

@@ -52,6 +52,20 @@ namespace PerfGoblin
         bool _pendingVisible;
         bool _initialized;
 
+        // Drag state
+        bool _isDragging;
+        bool _isDragPositioned;
+        Vector2 _dragStartPointerPos;
+        Vector2 _dragStartRootPos;
+
+        // Auto-popup alert state
+        internal bool IsAutoPopped;
+
+        // Config change tracking
+        OverlayPosition _lastAppliedPosition;
+        float _lastAppliedScale;
+        float _lastAppliedOpacity;
+
         PanelSettings _panelSettings;
 
         public PerfGoblinOverlay(GameObject host, PerfGoblinConfig config)
@@ -145,6 +159,15 @@ namespace PerfGoblin
                 });
             }
 
+            // Make header draggable
+            if (header != null)
+            {
+                header.RegisterCallback<PointerDownEvent>(OnDragStart);
+                header.RegisterCallback<PointerMoveEvent>(OnDragMove);
+                header.RegisterCallback<PointerUpEvent>(OnDragEnd);
+                header.RegisterCallback<PointerCaptureOutEvent>(evt => _isDragging = false);
+            }
+
             _panelFps = _root.Q("panel-fps");
             _panelMemory = _root.Q("panel-memory");
             _panelScripts = _root.Q("panel-scripts");
@@ -187,6 +210,10 @@ namespace PerfGoblin
                 _fpsGraph.generateVisualContent += DrawFpsGraph;
 
             ApplyPosition();
+
+            _lastAppliedPosition = _config.Position;
+            _lastAppliedScale = _config.OverlayScale;
+            _lastAppliedOpacity = _config.OverlayOpacity;
         }
 
         static T LoadFromPackage<T>(string name) where T : UnityEngine.Object
@@ -209,34 +236,37 @@ namespace PerfGoblin
         {
             if (_root == null) return;
 
-            _root.style.top = StyleKeyword.Auto;
-            _root.style.bottom = StyleKeyword.Auto;
-            _root.style.left = StyleKeyword.Auto;
-            _root.style.right = StyleKeyword.Auto;
-
-            int margin = 10;
-            switch (_config.Position)
+            if (!_isDragPositioned)
             {
-                case OverlayPosition.TopLeft:
-                    _root.style.top = margin;
-                    _root.style.left = margin;
-                    _root.style.transformOrigin = new TransformOrigin(0, 0);
-                    break;
-                case OverlayPosition.TopRight:
-                    _root.style.top = margin;
-                    _root.style.right = margin;
-                    _root.style.transformOrigin = new TransformOrigin(Length.Percent(100), 0);
-                    break;
-                case OverlayPosition.BottomLeft:
-                    _root.style.bottom = margin;
-                    _root.style.left = margin;
-                    _root.style.transformOrigin = new TransformOrigin(0, Length.Percent(100));
-                    break;
-                case OverlayPosition.BottomRight:
-                    _root.style.bottom = margin;
-                    _root.style.right = margin;
-                    _root.style.transformOrigin = new TransformOrigin(Length.Percent(100), Length.Percent(100));
-                    break;
+                _root.style.top = StyleKeyword.Auto;
+                _root.style.bottom = StyleKeyword.Auto;
+                _root.style.left = StyleKeyword.Auto;
+                _root.style.right = StyleKeyword.Auto;
+
+                int margin = 10;
+                switch (_config.Position)
+                {
+                    case OverlayPosition.TopLeft:
+                        _root.style.top = margin;
+                        _root.style.left = margin;
+                        _root.style.transformOrigin = new TransformOrigin(0, 0);
+                        break;
+                    case OverlayPosition.TopRight:
+                        _root.style.top = margin;
+                        _root.style.right = margin;
+                        _root.style.transformOrigin = new TransformOrigin(Length.Percent(100), 0);
+                        break;
+                    case OverlayPosition.BottomLeft:
+                        _root.style.bottom = margin;
+                        _root.style.left = margin;
+                        _root.style.transformOrigin = new TransformOrigin(0, Length.Percent(100));
+                        break;
+                    case OverlayPosition.BottomRight:
+                        _root.style.bottom = margin;
+                        _root.style.right = margin;
+                        _root.style.transformOrigin = new TransformOrigin(Length.Percent(100), Length.Percent(100));
+                        break;
+                }
             }
 
             _root.style.opacity = _config.OverlayOpacity;
@@ -248,13 +278,34 @@ namespace PerfGoblin
         public void SetVisible(bool visible)
         {
             _pendingVisible = visible;
+            if (!_initialized) return;
+
             if (_root != null)
                 _root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+
+            // Also toggle on the document root to guarantee full hide
+            if (_document != null && _document.rootVisualElement != null)
+                _document.rootVisualElement.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         public void UpdateUI()
         {
             if (_root == null) return;
+
+            // Detect runtime config changes (e.g. position changed via Project Settings)
+            if (_config.Position != _lastAppliedPosition)
+            {
+                _lastAppliedPosition = _config.Position;
+                _isDragPositioned = false;
+                ApplyPosition();
+            }
+            else if (Mathf.Abs(_config.OverlayScale - _lastAppliedScale) > 0.001f
+                  || Mathf.Abs(_config.OverlayOpacity - _lastAppliedOpacity) > 0.001f)
+            {
+                _lastAppliedScale = _config.OverlayScale;
+                _lastAppliedOpacity = _config.OverlayOpacity;
+                ApplyPosition();
+            }
 
             UpdatePanelVisibility();
             UpdateFpsPanel();
@@ -290,6 +341,13 @@ namespace PerfGoblin
             _fpsValue.text = fps.ToString();
 
             SetFpsColor(_fpsValue, fps, ft.TargetFPS);
+
+            // Alert highlight when FPS triggered auto-popup
+            bool fpsAlert = IsAutoPopped && ft.TargetFPS > 0 && fps < ft.TargetFPS * 0.5f;
+            if (fpsAlert)
+                _fpsValue.AddToClassList("pp-alert-highlight-fps");
+            else
+                _fpsValue.RemoveFromClassList("pp-alert-highlight-fps");
 
             _sb.Clear();
             _sb.Append("/ ").Append(ft.TargetFPS).Append(" FPS");
@@ -513,6 +571,8 @@ namespace PerfGoblin
 
             _sb.Clear();
             _sb.Append(sorted.Count).Append(" active");
+            if (scripts.TotalScriptTimeMs >= 0.01f)
+                _sb.AppendFormat(" · {0:F1}ms", scripts.TotalScriptTimeMs);
             _scriptsCount.text = _sb.ToString();
 
             int hash = ComputeScriptListHash(sorted);
@@ -536,22 +596,44 @@ namespace PerfGoblin
                 dot.RemoveFromClassList("status-warn");
                 dot.RemoveFromClassList("status-bad");
 
-                string statusClass = data.Status switch
+                if (data.HasPreciseTiming)
                 {
-                    PerformanceStatus.Warn => "status-warn",
-                    PerformanceStatus.Bad => "status-bad",
-                    _ => "status-ok"
-                };
+                    string statusClass = data.Status switch
+                    {
+                        PerformanceStatus.Warn => "status-warn",
+                        PerformanceStatus.Bad => "status-bad",
+                        _ => "status-ok"
+                    };
+                    row.AddToClassList(statusClass);
+                    dot.AddToClassList(statusClass);
+                }
+                else
+                {
+                    row.AddToClassList("status-ok");
+                    dot.AddToClassList("status-ok");
+                }
 
-                row.AddToClassList(statusClass);
-                dot.AddToClassList(statusClass);
+                // Alert highlight when script triggered auto-popup
+                if (IsAutoPopped && data.Status == PerformanceStatus.Bad)
+                    row.AddToClassList("pp-alert-highlight");
+                else
+                    row.RemoveFromClassList("pp-alert-highlight");
 
                 string shortName = ShortenScriptName(data.ScriptName);
                 ((Label)row.ElementAt(1)).text = shortName;
 
-                _sb.Clear();
-                _sb.AppendFormat("{0:F2}ms", data.LastFrameMs);
-                ((Label)row.ElementAt(2)).text = _sb.ToString();
+                // Show per-script ms only for scripts with precise timing (manual or profiler recorder)
+                var msLabel = (Label)row.ElementAt(2);
+                if (data.HasPreciseTiming)
+                {
+                    _sb.Clear();
+                    _sb.AppendFormat("{0:F2}ms", data.LastFrameMs);
+                    msLabel.text = _sb.ToString();
+                }
+                else
+                {
+                    msLabel.text = "";
+                }
             }
 
             for (int i = sorted.Count; i < _scriptRows.Count; i++)
@@ -576,8 +658,11 @@ namespace PerfGoblin
             for (int i = 0; i < list.Count; i++)
             {
                 hash = hash * 31 + list[i].ScriptName.GetHashCode();
-                hash = hash * 31 + Mathf.RoundToInt(list[i].LastFrameMs * 100);
-                hash = hash * 31 + (int)list[i].Status;
+                if (list[i].HasPreciseTiming)
+                {
+                    hash = hash * 31 + Mathf.RoundToInt(list[i].LastFrameMs * 100);
+                    hash = hash * 31 + (int)list[i].Status;
+                }
             }
             return hash;
         }
@@ -632,6 +717,12 @@ namespace PerfGoblin
                 var row = _spikeRows[i];
                 row.style.display = DisplayStyle.Flex;
 
+                // Alert highlight on the most recent spike when auto-popped
+                if (IsAutoPopped && i == 0)
+                    row.AddToClassList("pp-alert-highlight");
+                else
+                    row.RemoveFromClassList("pp-alert-highlight");
+
                 _sb.Clear();
                 _sb.Append('#').Append(spike.FrameCount);
                 ((Label)row.ElementAt(0)).text = _sb.ToString();
@@ -640,10 +731,38 @@ namespace PerfGoblin
                 _sb.AppendFormat("{0:F0}ms", spike.FrameTimeMs);
                 ((Label)row.ElementAt(1)).text = _sb.ToString();
 
-                string offender = spike.TopOffenders != null && spike.TopOffenders.Count > 0
-                    ? ShortenScriptName(spike.TopOffenders[0].ScriptName)
-                    : "—";
-                ((Label)row.ElementAt(2)).text = offender;
+                _sb.Clear();
+                // Show subsystem category if it has meaningful data (> 1ms)
+                if (!string.IsNullOrEmpty(spike.SpikeCategory) && spike.SpikeCategoryMs > 1f)
+                {
+                    _sb.Append(spike.SpikeCategory);
+                    _sb.AppendFormat(" ({0:F1}ms)", spike.SpikeCategoryMs);
+                }
+                else if (spike.TopOffenders != null && spike.TopOffenders.Count > 0)
+                {
+                    var top = spike.TopOffenders[0];
+                    float scriptPct = spike.FrameTimeMs > 0
+                        ? spike.TotalScriptTimeMs / spike.FrameTimeMs : 0f;
+
+                    if (scriptPct >= 0.05f)
+                    {
+                        _sb.Append(ShortenScriptName(top.ScriptName));
+                        _sb.AppendFormat(" ({0:F2}ms)", top.LastFrameMs);
+                    }
+                    else
+                    {
+#if UNITY_EDITOR
+                        _sb.Append("editor/system");
+#else
+                        _sb.Append("engine/system");
+#endif
+                    }
+                }
+                else
+                {
+                    _sb.Append("—");
+                }
+                ((Label)row.ElementAt(2)).text = _sb.ToString();
             }
 
             for (int i = recentList.Count; i < _spikeRows.Count; i++)
@@ -681,6 +800,50 @@ namespace PerfGoblin
                 pool.Add(row);
             }
         }
+
+        #region Drag Handling
+
+        void OnDragStart(PointerDownEvent evt)
+        {
+            if (evt.button != 0) return;
+            // Don't start drag when clicking the minimize button
+            if (evt.target is VisualElement ve && ve.name == "pp-minimize") return;
+
+            _isDragging = true;
+            _dragStartPointerPos = (Vector2)evt.position;
+            _dragStartRootPos = new Vector2(_root.layout.x, _root.layout.y);
+            ((VisualElement)evt.currentTarget).CapturePointer(evt.pointerId);
+            evt.StopPropagation();
+        }
+
+        void OnDragMove(PointerMoveEvent evt)
+        {
+            if (!_isDragging) return;
+
+            Vector2 delta = (Vector2)evt.position - _dragStartPointerPos;
+
+            // Require a small movement before committing to drag (avoids accidental repositioning on click)
+            if (!_isDragPositioned && delta.sqrMagnitude < 9f) return;
+
+            _root.style.left = _dragStartRootPos.x + delta.x;
+            _root.style.top = _dragStartRootPos.y + delta.y;
+            _root.style.right = StyleKeyword.Auto;
+            _root.style.bottom = StyleKeyword.Auto;
+            _root.style.transformOrigin = new TransformOrigin(0, 0);
+
+            _isDragPositioned = true;
+            evt.StopPropagation();
+        }
+
+        void OnDragEnd(PointerUpEvent evt)
+        {
+            if (!_isDragging) return;
+            _isDragging = false;
+            ((VisualElement)evt.currentTarget).ReleasePointer(evt.pointerId);
+            evt.StopPropagation();
+        }
+
+        #endregion
 
         public void Dispose()
         {

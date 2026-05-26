@@ -20,6 +20,7 @@
     padding-bottom: 8px;
     border-bottom-width: 1px;
     border-bottom-color: rgba(30, 41, 59, 0.5);
+    cursor: move-arrow;
 }
 
 .pp-title {
@@ -299,6 +300,21 @@
     overflow: hidden;
     -unity-text-overflow-position: end;
     text-overflow: ellipsis;
+}
+
+/* Alert highlight for auto-popup triggers */
+.pp-alert-highlight {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-width: 1px;
+    border-color: rgba(239, 68, 68, 0.5);
+    border-radius: 4px;
+}
+
+.pp-alert-highlight-fps {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin: -2px -6px;
 }
 
 /* FPS color classes */

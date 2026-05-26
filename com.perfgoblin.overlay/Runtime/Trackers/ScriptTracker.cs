@@ -20,6 +20,7 @@ namespace PerfGoblin
         public int CallCount;
         public long GCAllocBytes;
         public PerformanceStatus Status;
+        public bool HasPreciseTiming;
 
         float _runningTotal;
         int _sampleCount;
@@ -28,6 +29,7 @@ namespace PerfGoblin
         {
             LastFrameMs += ms;
             CallCount++;
+            HasPreciseTiming = true;
         }
 
         public void UpdateStats(float warnMs, float badMs)
@@ -51,6 +53,7 @@ namespace PerfGoblin
             LastFrameMs = 0f;
             CallCount = 0;
             GCAllocBytes = 0;
+            HasPreciseTiming = false;
         }
     }
 
@@ -69,6 +72,7 @@ namespace PerfGoblin
 
         public IReadOnlyList<ScriptTimingData> SortedScripts => _sortedResults;
         public float TotalScriptTimeMs => _totalScriptTimeMs;
+        public bool HasRecorderData { get; private set; }
 
         public ScriptTracker(PerfGoblinConfig config)
         {
@@ -162,32 +166,56 @@ namespace PerfGoblin
             _frameStopwatch.Stop();
             _totalScriptTimeMs = (float)_frameStopwatch.Elapsed.TotalMilliseconds;
 
-            bool anyRecorderHasData = false;
+            // Try ProfilerRecorder for each script individually
+            float recorderTotalMs = 0f;
+            int recorderHitCount = 0;
             foreach (var kvp in _autoTimings)
             {
                 var data = kvp.Value;
+                bool found = false;
                 foreach (var rkvp in _recorders)
                 {
                     string baseName = data.ScriptName.Replace("()", "");
-                    if (rkvp.Key.Contains(baseName) && rkvp.Value.Valid && rkvp.Value.LastValue > 0)
+                    // Require > 1000ns (1µs) to filter out noise from empty recorders
+                    if (rkvp.Key.Contains(baseName) && rkvp.Value.Valid && rkvp.Value.LastValue > 1000)
                     {
                         data.LastFrameMs = rkvp.Value.LastValue / 1_000_000f;
                         data.CallCount = 1;
-                        anyRecorderHasData = true;
+                        data.HasPreciseTiming = true;
+                        recorderTotalMs += data.LastFrameMs;
+                        recorderHitCount++;
+                        found = true;
                         break;
                     }
                 }
+                if (!found)
+                    data.CallCount = -1; // mark for fallback
             }
 
-            // Fallback: if no recorder data, distribute total time proportionally
-            // based on which scripts are active (rough estimate)
-            if (!anyRecorderHasData && _autoTimings.Count > 0 && _totalScriptTimeMs > 0.01f)
+            HasRecorderData = recorderHitCount > 0;
+
+            // Fallback: scripts without recorder data get a share of the remaining time
+            int unrecordedCount = _autoTimings.Count - recorderHitCount;
+            if (unrecordedCount > 0 && _totalScriptTimeMs > 0.01f)
             {
-                float perScript = _totalScriptTimeMs / _autoTimings.Count;
+                float remainingMs = Mathf.Max(0f, _totalScriptTimeMs - recorderTotalMs);
+                float perScript = remainingMs / unrecordedCount;
                 foreach (var kvp in _autoTimings)
                 {
-                    kvp.Value.LastFrameMs = perScript;
-                    kvp.Value.CallCount = 1;
+                    if (kvp.Value.CallCount == -1)
+                    {
+                        kvp.Value.LastFrameMs = perScript;
+                        kvp.Value.CallCount = 1;
+                    }
+                }
+            }
+            else if (unrecordedCount > 0)
+            {
+                // Total time too small to distribute — zero out unrecorded scripts
+                foreach (var kvp in _autoTimings)
+                {
+                    if (kvp.Value.CallCount == -1)
+                        kvp.Value.CallCount = 0;
                 }
             }
 
@@ -209,13 +237,36 @@ namespace PerfGoblin
         {
             _sortedResults.Clear();
 
+            // Add auto-detected scripts, skipping any that overlap with a manual sample
             foreach (var kvp in _autoTimings)
-                _sortedResults.Add(kvp.Value);
+            {
+                bool overridden = false;
+                foreach (var mkvp in _manualTimings)
+                {
+                    // "CanvasUpdate" matches "CanvasHelper.Update()" via class name overlap
+                    string autoBase = kvp.Value.ScriptName.Replace("()", "").Replace(".", "");
+                    string manualClean = mkvp.Key.Replace(".", "");
+                    if (autoBase.Contains(manualClean) || manualClean.Contains(autoBase))
+                    {
+                        overridden = true;
+                        break;
+                    }
+                }
+                if (!overridden)
+                    _sortedResults.Add(kvp.Value);
+            }
 
+            // Manual timings always included
             foreach (var kvp in _manualTimings)
                 _sortedResults.Add(kvp.Value);
 
-            _sortedResults.Sort((a, b) => b.LastFrameMs.CompareTo(a.LastFrameMs));
+            // Sort: precise (manual/recorder) first, then by ms descending
+            _sortedResults.Sort((a, b) =>
+            {
+                if (a.HasPreciseTiming != b.HasPreciseTiming)
+                    return a.HasPreciseTiming ? -1 : 1;
+                return b.LastFrameMs.CompareTo(a.LastFrameMs);
+            });
 
             if (_sortedResults.Count > _config.MaxDisplayedScripts)
                 _sortedResults.RemoveRange(_config.MaxDisplayedScripts, _sortedResults.Count - _config.MaxDisplayedScripts);

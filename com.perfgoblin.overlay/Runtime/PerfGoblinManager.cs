@@ -20,6 +20,11 @@ namespace PerfGoblin
 
         PerfGoblinOverlay _overlay;
 
+        float _lastAutoPopupTime;
+        int _lastAutoPopupSpikeCount;
+        bool _autoPopped;          // true when overlay was shown by auto-popup (not manual toggle)
+        float _autoDismissTimer;
+
         static readonly Dictionary<string, Stopwatch> s_ActiveSamples = new();
         static readonly Dictionary<string, ScriptTimingData> s_ManualTimings = new();
 
@@ -60,6 +65,8 @@ namespace PerfGoblin
             if (Input.GetKeyDown(Config.ToggleKey))
             {
                 IsVisible = !IsVisible;
+                _autoPopped = false;
+                _overlay.IsAutoPopped = false;
                 _overlay.SetVisible(IsVisible);
             }
 
@@ -74,14 +81,74 @@ namespace PerfGoblin
             Scripts.LateUpdate();
             Spikes.Update();
 
+            // Auto-popup when hidden and thresholds exceeded
+            if (!IsVisible && Config.AutoPopupOnThreshold)
+            {
+                float now = Time.realtimeSinceStartup;
+                if (now - _lastAutoPopupTime > Config.AutoPopupCooldownSeconds && ShouldAutoPopup())
+                {
+                    _lastAutoPopupTime = now;
+                    _autoPopped = true;
+                    _autoDismissTimer = 0f;
+                    IsVisible = true;
+                    _overlay.IsAutoPopped = true;
+                    _overlay.SetVisible(true);
+                }
+            }
+
+            // Auto-dismiss: only when overlay was auto-popped and dismiss is configured (> 0)
+            if (IsVisible && _autoPopped && Config.AutoDismissSeconds > 0f)
+            {
+                if (!ShouldAutoPopup())
+                {
+                    _autoDismissTimer += Time.unscaledDeltaTime;
+                    if (_autoDismissTimer >= Config.AutoDismissSeconds)
+                    {
+                        _autoPopped = false;
+                        _overlay.IsAutoPopped = false;
+                        IsVisible = false;
+                        _overlay.SetVisible(false);
+                    }
+                }
+                else
+                {
+                    _autoDismissTimer = 0f;
+                }
+            }
+
             if (IsVisible)
                 _overlay.UpdateUI();
+        }
+
+        bool ShouldAutoPopup()
+        {
+            // Check FPS: below 50% of target
+            if (FrameTime.TargetFPS > 0 && FrameTime.CurrentFPS < FrameTime.TargetFPS * 0.5f)
+                return true;
+
+            // Check scripts: any script at Bad status
+            var scripts = Scripts.SortedScripts;
+            for (int i = 0; i < scripts.Count; i++)
+            {
+                if (scripts[i].Status == PerformanceStatus.Bad)
+                    return true;
+            }
+
+            // Check spikes: new spike detected since last check
+            if (Spikes.TotalSpikeCount > _lastAutoPopupSpikeCount)
+            {
+                _lastAutoPopupSpikeCount = Spikes.TotalSpikeCount;
+                return true;
+            }
+
+            return false;
         }
 
         void OnDestroy()
         {
             Memory?.Dispose();
             Scripts?.Dispose();
+            Spikes?.Dispose();
             _overlay?.Dispose();
 
             if (s_Instance == this)
