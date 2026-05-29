@@ -21,6 +21,7 @@ namespace PerfGoblin
     public class PerfGoblinConfig
     {
         // General
+        public bool Enabled = true;
         public KeyCode ToggleKey = KeyCode.F3;
         public bool ShowOnPlayModeStart = true;
 
@@ -42,6 +43,7 @@ namespace PerfGoblin
         // Spikes
         public float SpikeMultiplier = 2.0f;
         public int SpikeHistoryCapacity = 100;
+        public float SpikeDisplayDurationSeconds = 30f;
 
         // Auto Popup
         public bool AutoPopupOnThreshold = false;
@@ -92,6 +94,7 @@ namespace PerfGoblin
         public void ResetToDefaults()
         {
             var defaults = new PerfGoblinConfig();
+            Enabled = defaults.Enabled;
             ToggleKey = defaults.ToggleKey;
             ShowOnPlayModeStart = defaults.ShowOnPlayModeStart;
             FpsSmoothingWindow = defaults.FpsSmoothingWindow;
@@ -105,6 +108,7 @@ namespace PerfGoblin
             MaxDisplayedScripts = defaults.MaxDisplayedScripts;
             SpikeMultiplier = defaults.SpikeMultiplier;
             SpikeHistoryCapacity = defaults.SpikeHistoryCapacity;
+            SpikeDisplayDurationSeconds = defaults.SpikeDisplayDurationSeconds;
             AutoPopupOnThreshold = defaults.AutoPopupOnThreshold;
             AutoPopupCooldownSeconds = defaults.AutoPopupCooldownSeconds;
             AutoDismissSeconds = defaults.AutoDismissSeconds;

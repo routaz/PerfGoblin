@@ -34,9 +34,20 @@ namespace PerfGoblin.Editor
             EditorGUI.BeginChangeCheck();
 
             GUILayout.Space(10);
-            EditorGUILayout.LabelField("PerfGoblin v0.1.0", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("PerfGoblin v0.2.0", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Lightweight performance overlay for development builds.", EditorStyles.wordWrappedMiniLabel);
             GUILayout.Space(10);
+
+            _config.Enabled = EditorGUILayout.Toggle("Enabled", _config.Enabled);
+            if (!_config.Enabled)
+            {
+                EditorGUILayout.HelpBox(
+                    "PerfGoblin is disabled. No GameObject, trackers, or profiler recorders will be created when entering Play Mode.",
+                    MessageType.Info);
+            }
+            GUILayout.Space(5);
+
+            EditorGUI.BeginDisabledGroup(!_config.Enabled);
 
             _generalFoldout = EditorGUILayout.Foldout(_generalFoldout, "General", true);
             if (_generalFoldout)
@@ -127,6 +138,7 @@ namespace PerfGoblin.Editor
                     (targetMs * _config.SpikeMultiplier).ToString("F0") + "ms.\n\n" +
                     "The overlay shows total frame time (e.g. 66ms) with the top offender script and its individual cost (e.g. 4.2ms).",
                     MessageType.Info);
+                _config.SpikeDisplayDurationSeconds = EditorGUILayout.Slider("Display Duration (s)", _config.SpikeDisplayDurationSeconds, 5f, 60f);
                 _config.SpikeHistoryCapacity = EditorGUILayout.IntSlider("Spike History Capacity", _config.SpikeHistoryCapacity, 10, 500);
                 EditorGUI.indentLevel--;
             }
@@ -142,6 +154,8 @@ namespace PerfGoblin.Editor
                 _config.VisiblePanels = (ActivePanels)EditorGUILayout.EnumFlagsField("Visible Panels", _config.VisiblePanels);
                 EditorGUI.indentLevel--;
             }
+
+            EditorGUI.EndDisabledGroup();
 
             if (EditorGUI.EndChangeCheck())
                 _config.Save();

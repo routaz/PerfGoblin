@@ -57,7 +57,7 @@ namespace PerfGoblin
         }
     }
 
-    public class ScriptTracker : IDisposable
+    public class ScriptTracker : IDisposable, IScriptSource
     {
         readonly PerfGoblinConfig _config;
         readonly Dictionary<string, ProfilerRecorder> _recorders = new();
@@ -138,7 +138,7 @@ namespace PerfGoblin
                             }
                             rec.Dispose();
                         }
-                        catch { }
+                        catch (Exception) { }
                     }
                 }
             }
@@ -237,16 +237,13 @@ namespace PerfGoblin
         {
             _sortedResults.Clear();
 
-            // Add auto-detected scripts, skipping any that overlap with a manual sample
             foreach (var kvp in _autoTimings)
             {
+                string className = ExtractClassName(kvp.Value.ScriptName);
                 bool overridden = false;
                 foreach (var mkvp in _manualTimings)
                 {
-                    // "CanvasUpdate" matches "CanvasHelper.Update()" via class name overlap
-                    string autoBase = kvp.Value.ScriptName.Replace("()", "").Replace(".", "");
-                    string manualClean = mkvp.Key.Replace(".", "");
-                    if (autoBase.Contains(manualClean) || manualClean.Contains(autoBase))
+                    if (mkvp.Key.IndexOf(className, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         overridden = true;
                         break;
@@ -270,6 +267,12 @@ namespace PerfGoblin
 
             if (_sortedResults.Count > _config.MaxDisplayedScripts)
                 _sortedResults.RemoveRange(_config.MaxDisplayedScripts, _sortedResults.Count - _config.MaxDisplayedScripts);
+        }
+
+        internal static string ExtractClassName(string scriptName)
+        {
+            int dotIndex = scriptName.IndexOf('.');
+            return dotIndex > 0 ? scriptName.Substring(0, dotIndex) : scriptName;
         }
 
         public void Dispose()

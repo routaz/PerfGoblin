@@ -19,7 +19,7 @@ namespace PerfGoblin
         public float TimeSinceStart;
     }
 
-    public class SpikeDetector : IDisposable
+    public class SpikeDetector : IDisposable, ISpikeSource
     {
         readonly PerfGoblinConfig _config;
         readonly FrameTimeTracker _frameTime;
@@ -38,10 +38,15 @@ namespace PerfGoblin
         {
             get
             {
+                float now = Time.realtimeSinceStartup;
+                float maxAge = _config.SpikeDisplayDurationSeconds;
                 int count = Mathf.Min(_history.Count, 10);
                 int start = _history.Count - count;
                 for (int i = _history.Count - 1; i >= start; i--)
-                    yield return _history[i];
+                {
+                    if (now - _history[i].TimeSinceStart <= maxAge)
+                        yield return _history[i];
+                }
             }
         }
 
@@ -148,7 +153,7 @@ namespace PerfGoblin
                         rec.Dispose();
                     }
                 }
-                catch { }
+                catch (Exception) { }
             }
         }
 

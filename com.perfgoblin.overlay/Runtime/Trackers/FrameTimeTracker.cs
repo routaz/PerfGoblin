@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace PerfGoblin
 {
-    public class FrameTimeTracker
+    public class FrameTimeTracker : IFrameTimeSource
     {
         readonly PerfGoblinConfig _config;
         readonly RingBuffer<float> _history;

@@ -14,7 +14,7 @@ namespace PerfGoblin
         public Color DisplayColor;
     }
 
-    public class MemoryTracker : IDisposable
+    public class MemoryTracker : IDisposable, IMemorySource
     {
         readonly PerfGoblinConfig _config;
         readonly List<MemoryCategory> _categories = new(8);

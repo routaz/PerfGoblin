@@ -19,11 +19,7 @@ namespace PerfGoblin
         public static SpikeDetector Spikes { get; private set; }
 
         PerfGoblinOverlay _overlay;
-
-        float _lastAutoPopupTime;
-        int _lastAutoPopupSpikeCount;
-        bool _autoPopped;          // true when overlay was shown by auto-popup (not manual toggle)
-        float _autoDismissTimer;
+        AutoPopupController _autoPopup;
 
         static readonly Dictionary<string, Stopwatch> s_ActiveSamples = new();
         static readonly Dictionary<string, ScriptTimingData> s_ManualTimings = new();
@@ -32,6 +28,10 @@ namespace PerfGoblin
         static void Initialize()
         {
             if (s_Instance != null) return;
+
+            var config = PerfGoblinConfig.Load();
+            if (!config.Enabled) return;
+
             var go = new GameObject("[PerfGoblin]");
             DontDestroyOnLoad(go);
             go.hideFlags = HideFlags.NotEditable;
@@ -54,7 +54,8 @@ namespace PerfGoblin
             Scripts = new ScriptTracker(Config);
             Spikes = new SpikeDetector(Config, FrameTime, Scripts);
 
-            _overlay = new PerfGoblinOverlay(gameObject, Config);
+            _autoPopup = new AutoPopupController(Config, FrameTime, Scripts, Spikes);
+            _overlay = new PerfGoblinOverlay(gameObject, Config, FrameTime, Memory, Scripts, Spikes);
 
             IsVisible = Config.ShowOnPlayModeStart;
             _overlay.SetVisible(IsVisible);
@@ -65,7 +66,7 @@ namespace PerfGoblin
             if (Input.GetKeyDown(Config.ToggleKey))
             {
                 IsVisible = !IsVisible;
-                _autoPopped = false;
+                _autoPopup.OnManualToggle();
                 _overlay.IsAutoPopped = false;
                 _overlay.SetVisible(IsVisible);
             }
@@ -81,67 +82,22 @@ namespace PerfGoblin
             Scripts.LateUpdate();
             Spikes.Update();
 
-            // Auto-popup when hidden and thresholds exceeded
-            if (!IsVisible && Config.AutoPopupOnThreshold)
+            var action = _autoPopup.Update(IsVisible);
+            if (action == AutoPopupController.Action.Show)
             {
-                float now = Time.realtimeSinceStartup;
-                if (now - _lastAutoPopupTime > Config.AutoPopupCooldownSeconds && ShouldAutoPopup())
-                {
-                    _lastAutoPopupTime = now;
-                    _autoPopped = true;
-                    _autoDismissTimer = 0f;
-                    IsVisible = true;
-                    _overlay.IsAutoPopped = true;
-                    _overlay.SetVisible(true);
-                }
+                IsVisible = true;
+                _overlay.IsAutoPopped = true;
+                _overlay.SetVisible(true);
             }
-
-            // Auto-dismiss: only when overlay was auto-popped and dismiss is configured (> 0)
-            if (IsVisible && _autoPopped && Config.AutoDismissSeconds > 0f)
+            else if (action == AutoPopupController.Action.Hide)
             {
-                if (!ShouldAutoPopup())
-                {
-                    _autoDismissTimer += Time.unscaledDeltaTime;
-                    if (_autoDismissTimer >= Config.AutoDismissSeconds)
-                    {
-                        _autoPopped = false;
-                        _overlay.IsAutoPopped = false;
-                        IsVisible = false;
-                        _overlay.SetVisible(false);
-                    }
-                }
-                else
-                {
-                    _autoDismissTimer = 0f;
-                }
+                IsVisible = false;
+                _overlay.IsAutoPopped = false;
+                _overlay.SetVisible(false);
             }
 
             if (IsVisible)
                 _overlay.UpdateUI();
-        }
-
-        bool ShouldAutoPopup()
-        {
-            // Check FPS: below 50% of target
-            if (FrameTime.TargetFPS > 0 && FrameTime.CurrentFPS < FrameTime.TargetFPS * 0.5f)
-                return true;
-
-            // Check scripts: any script at Bad status
-            var scripts = Scripts.SortedScripts;
-            for (int i = 0; i < scripts.Count; i++)
-            {
-                if (scripts[i].Status == PerformanceStatus.Bad)
-                    return true;
-            }
-
-            // Check spikes: new spike detected since last check
-            if (Spikes.TotalSpikeCount > _lastAutoPopupSpikeCount)
-            {
-                _lastAutoPopupSpikeCount = Spikes.TotalSpikeCount;
-                return true;
-            }
-
-            return false;
         }
 
         void OnDestroy()

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.0] - 2026-05-29
+
+### Added
+- Global enable/disable toggle in Project Settings — when disabled, PerfGoblin skips initialization entirely (zero overhead)
+- Spike display duration setting — spikes auto-expire from the list after a configurable time (default 30s)
+- Unit test suite under Assets/Tests/EditMode with mock tracker implementations
+- Play Mode performance benchmark tests validating CPU overhead, memory footprint, and GC allocations
+- InternalsVisibleTo support for test assembly access
+
+### Changed
+- Introduced tracker interfaces (IFrameTimeSource, IMemorySource, IScriptSource, ISpikeSource) for dependency injection and testability
+- Extracted FPS, Memory, Scripts, and Spikes panels into dedicated view classes under Runtime/Views
+- Moved auto-popup logic from PerfGoblinManager into AutoPopupController
+- Replaced fragile string-mangling script name matching with class name extraction
+- PerfGoblinOverlay now receives tracker dependencies via constructor instead of static access
+- Renamed Scripts panel to "SCRIPT PERFORMANCE" for clarity
+- Cross-platform font selection using installed font detection instead of hardcoded fallback chain
+
 ## [0.1.0] - 2026-05-25
 
 ### Added

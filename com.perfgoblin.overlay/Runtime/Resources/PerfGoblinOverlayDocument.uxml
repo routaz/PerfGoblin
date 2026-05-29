@@ -44,7 +44,7 @@
     <!-- Scripts Panel -->
     <ui:VisualElement name="panel-scripts" class="pp-panel">
       <ui:VisualElement class="pp-panel-header">
-        <ui:Label text="SCRIPTS" class="pp-panel-label" />
+        <ui:Label text="SCRIPT PERFORMANCE" class="pp-panel-label" />
         <ui:Label name="scripts-count" text="0 active" class="pp-scripts-count" />
       </ui:VisualElement>
       <ui:ScrollView name="scripts-list" class="pp-scripts-list" />

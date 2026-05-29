@@ -31,6 +31,7 @@ namespace PerfGoblin.Editor
             bool isActive = isPlaying && PerfGoblinManager.Config != null;
 
             EditorGUILayout.LabelField("Status", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Enabled:", _config.Enabled ? "Yes" : "No");
             EditorGUILayout.LabelField("Play Mode:", isPlaying ? "Active" : "Inactive");
             EditorGUILayout.LabelField("PerfGoblin:", isActive ? "Running" : "Stopped");
             if (isActive)
