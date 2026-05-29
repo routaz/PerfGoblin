@@ -1,4 +1,4 @@
-# PerfGoblin
+# PerfGoblin PROTOTYPE
 
 Lightweight development-only performance overlay for Unity. Provides real-time FPS, memory, script performance, and frame spike insights directly in the Game View during Play Mode.
 
