@@ -114,8 +114,8 @@ namespace PerfGoblin.Editor
                     "  PerfGoblinProfiler.BeginSample(\"MyMethod\");\n" +
                     "  // ... your code ...\n" +
                     "  PerfGoblinProfiler.EndSample(\"MyMethod\");\n\n" +
-                    "Place calls INSIDE the method body. No #if wrappers needed —\n" +
-                    "calls are automatically stripped in release builds.\n\n" +
+                    "Place calls INSIDE the method body. PerfGoblin is not compiled into release builds,\n" +
+                    "so wrap the calls in #if UNITY_EDITOR || DEVELOPMENT_BUILD.\n\n" +
                     "Instrumented methods appear with precise per-method timing and warn/bad status.\n" +
                     "For full per-script breakdown, use Unity's Profiler window (Window > Analysis > Profiler).",
                     MessageType.Info);

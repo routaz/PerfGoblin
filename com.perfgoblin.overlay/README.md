@@ -1,123 +1,159 @@
 # PerfGoblin
 
-Lightweight development-only performance overlay for Unity. Provides real-time FPS, memory, script performance, and frame spike insights directly in the Game View during Play Mode.
+A lightweight performance overlay for Unity, for use during development. It shows FPS, memory, script
+cost, and frame spikes directly in the Game view during Play Mode, so you notice regressions while you
+work instead of in a profiling session later.
 
-**Unity 2022.3+ (LTS) required.** All code is stripped from release builds automatically.
+**Requires Unity 2022.3 LTS or newer.** PerfGoblin is compiled only in the editor and development builds.
 
 ## Installation
 
-### Via Unity Package Manager (git URL)
+In the Package Manager, choose **+ > Add package from git URL** and enter:
 
-1. Open **Window > Package Manager**
-2. Click **+** > **Add package from git URL**
-3. Enter the repository URL pointing to the `com.perfgoblin.overlay` folder
+```
+https://github.com/routaz/PerfGoblin.git?path=/com.perfgoblin.overlay
+```
 
-### Via local path
-
-1. Clone this repository
-2. In Package Manager, click **+** > **Add package from disk**
-3. Navigate to `com.perfgoblin.overlay/package.json`
+To work from a local clone instead, choose **+ > Add package from disk** and select
+`com.perfgoblin.overlay/package.json`.
 
 ## Usage
 
-PerfGoblin is **enabled by default**. When enabled, it activates automatically when entering Play Mode. Press **F3** to toggle the overlay.
+PerfGoblin starts automatically when you enter Play Mode. Press **F3** to show or hide the overlay.
+Drag the overlay to move it.
 
-To disable PerfGoblin without removing the package, uncheck **Enabled** in **Edit > Project Settings > PerfGoblin**. When disabled, no GameObject, trackers, or profiler recorders are created — zero overhead.
+Hotkeys read input through the legacy Input Manager. Set **Project Settings > Player > Active Input
+Handling** to *Input Manager (Old)* or *Both*.
+
+To turn PerfGoblin off without removing the package, clear **Enabled** in
+**Edit > Project Settings > PerfGoblin**. When it is off, no GameObject, trackers, or profiler
+recorders are created, so it adds no overhead.
 
 ### Panels
 
-- **FPS** — Smoothed FPS counter, frame time (ms), min/max/avg stats, and a rolling frame time graph
-- **Memory** — Total allocation with category breakdown bar (Textures, Meshes, Audio, Managed, GFX)
-- **Scripts** — Active MonoBehaviours sorted by cost, with color-coded status dots (green/yellow/red)
-- **Spikes** — Detected frame spikes with the top offending script attributed
+- **FPS**: smoothed FPS, frame time in ms, min/max/average, and a rolling frame-time graph.
+- **Memory**: total allocated memory, with a breakdown bar for textures, meshes, audio, managed, and graphics memory.
+- **Scripts**: active MonoBehaviours sorted by cost, each with a green, yellow, or red status dot.
+- **Spikes**: recent frame spikes, each attributed to an engine subsystem (rendering, physics, GC,
+  and so on) and the most expensive scripts in that frame.
 
-### Manual Profiling Markers
+### Timing your own code
 
-Add custom profiling sections to your code:
+Wrap code in named samples to get precise timings for it. PerfGoblin is not compiled into release
+builds, so guard the calls to keep those builds compiling:
 
 ```csharp
-PerfGoblin.PerfGoblinManager.BeginSample("AI Pathfinding");
-// ... expensive code ...
-PerfGoblin.PerfGoblinManager.EndSample("AI Pathfinding");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+PerfGoblin.PerfGoblinProfiler.BeginSample("AI Pathfinding");
+#endif
+// ... code to measure ...
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+PerfGoblin.PerfGoblinProfiler.EndSample("AI Pathfinding");
+#endif
 ```
 
-These appear in the Scripts panel alongside automatic detections.
+Samples appear in the Scripts panel alongside the automatically detected scripts, and are listed
+before them.
+
+### Auto popup
+
+With **Auto Popup On Threshold** enabled, a hidden overlay opens by itself when FPS drops below half
+the target frame rate, a script crosses the red threshold, or a new spike is detected. Set
+**Auto Dismiss** to close it again once things recover.
 
 ## Configuration
 
-Open **Edit > Project Settings > PerfGoblin** to configure:
+All settings are in **Edit > Project Settings > PerfGoblin**.
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Toggle Key | F3 | Hotkey to show/hide overlay |
-| Show On Play Mode Start | true | Auto-show when entering Play Mode |
-| FPS Smoothing Window | 0.5s | Exponential moving average window |
-| Memory Sample Interval | 30 frames | How often to query memory stats |
-| Script Warn Threshold | 1.0ms | Yellow status threshold |
-| Script Bad Threshold | 4.0ms | Red status threshold |
-| Auto Detect Scripts | true | Scan for MonoBehaviours automatically |
-| Spike Multiplier | 2.0x | Frame time multiplier for spike detection |
-| Spike Display Duration | 30s | How long spikes stay visible in the list |
-| Overlay Position | Top Right | Corner placement |
-| Overlay Opacity | 0.92 | Panel transparency |
+| Group | Setting | Default | Description |
+|-------|---------|---------|-------------|
+| General | Enabled | On | Turns PerfGoblin on or off entirely |
+| | Toggle Key | F3 | Shows or hides the overlay |
+| | Show On Play Mode Start | On | Opens the overlay when entering Play Mode |
+| Auto popup | Auto Popup On Threshold | Off | Opens the overlay when a threshold is crossed |
+| | Popup Cooldown | 5 s | Minimum time between automatic popups |
+| | Auto Dismiss | 0 s | Closes an auto-opened overlay after this long without issues (0 = never) |
+| FPS | Smoothing Window | 0.5 s | Window for the smoothed FPS value |
+| | Frame History Capacity | 300 | Frames kept for the graph and statistics |
+| Memory | Sample Interval | 30 frames | How often memory is sampled |
+| | Exclude Editor Overhead | Off | Subtracts the editor's baseline memory, captured at the first sample |
+| Scripts | Auto Detect Scripts | On | Finds active MonoBehaviours automatically |
+| | Scan Interval | 5 s | How often to look for new scripts |
+| | Max Displayed Scripts | 10 | Rows shown in the Scripts panel |
+| | Warn Threshold | 1.0 ms | Cost at which a script turns yellow |
+| | Bad Threshold | 4.0 ms | Cost at which a script turns red |
+| Spikes | Spike Multiplier | 2.0× | A frame this many times slower than expected counts as a spike |
+| | Display Duration | 30 s | How long a spike stays in the list |
+| | Spike History Capacity | 100 | Spikes kept in history |
+| Overlay | Position | Top Right | Starting corner |
+| | Compact Mode | Off | Smaller layout |
+| | Opacity | 0.92 | Panel opacity |
+| | Scale | 1.5 | Overall size |
+| | Visible Panels | All | Which panels are shown |
+
+## Performance budget
+
+PerfGoblin is meant to stay out of the way. Automated Play Mode benchmarks in
+`Assets/Tests/PlayMode/PerformanceBudgetTests.cs` check these limits:
+
+| Metric | Budget | How it is measured |
+|--------|--------|--------------------|
+| CPU overhead | < 0.5 ms per frame | Stopwatch around all tracker `Update`/`LateUpdate` calls, averaged over 120 frames |
+| Memory footprint | < 2 MB | `Profiler.GetTotalAllocatedMemoryLong()` before and after initialization and warm-up |
+| GC allocations | ~0 bytes per frame | `Profiler.GetMonoUsedSizeLong()` change per frame, averaged over 120 frames |
+
+Run them from **Window > General > Test Runner**, on the **PlayMode** tab.
+
+## Build stripping
+
+The runtime assembly has the define constraint `UNITY_EDITOR || DEVELOPMENT_BUILD`, so it is compiled
+only in the editor and in development builds. Release builds contain no PerfGoblin code, so any of
+your own code that calls PerfGoblin must be guarded with `#if UNITY_EDITOR || DEVELOPMENT_BUILD`.
+
+## Sample
+
+In the Package Manager, select PerfGoblin and choose **Samples > Demo Scene > Import**. The sample
+contains `DemoScene.unity` and three stress-test scripts:
+
+- **HeavyUpdateScript**: expensive math in `Update`.
+- **AllocatingScript**: allocates garbage every frame.
+- **SpikyScript**: causes periodic large frame spikes.
 
 ## Architecture
 
-PerfGoblin follows SOLID principles with clear separation of concerns:
-
-- **Tracker interfaces** (`IFrameTimeSource`, `IMemorySource`, `IScriptSource`, `ISpikeSource`) — define read-only contracts for each metric, enabling dependency injection and testability
-- **Tracker implementations** (`FrameTimeTracker`, `MemoryTracker`, `ScriptTracker`, `SpikeDetector`) — collect performance data from Unity's Profiler API
-- **Panel views** (`FpsPanelView`, `MemoryPanelView`, `ScriptsPanelView`, `SpikesPanelView`) — each panel owns its UI elements and update logic
-- **AutoPopupController** — encapsulates auto-show/auto-dismiss logic, separate from the overlay
-- **PerfGoblinOverlay** — coordinates panel views, handles drag and visibility
-- **PerfGoblinManager** — orchestrates initialization and the update loop
-
-## Build Stripping
-
-All PerfGoblin code uses `#if UNITY_EDITOR || DEVELOPMENT_BUILD` preprocessor guards and the Runtime assembly definition has a matching define constraint. Release builds contain zero PerfGoblin code.
-
-## Performance Budget
-
-PerfGoblin targets the following overhead limits, validated by automated Play Mode benchmarks in `Assets/Tests/PlayMode/PerformanceBudgetTests.cs`:
-
-| Metric | Budget | How it's measured |
-|--------|--------|-------------------|
-| CPU overhead | < 0.5ms per frame | Stopwatch around all tracker Update/LateUpdate calls, averaged over 120 frames |
-| Memory footprint | < 2 MB | `Profiler.GetTotalAllocatedMemoryLong()` delta before/after initialization + warmup |
-| GC allocations | ~0 bytes per frame | `Profiler.GetMonoUsedSizeLong()` delta per frame, averaged over 120 frames |
-
-Run these benchmarks via **Window > General > Test Runner > PlayMode** tab.
-
-## Sample Scene
-
-Import the sample via Package Manager to get a demo scene with stress test scripts:
-- **HeavyUpdateScript** — Expensive math in Update
-- **AllocatingScript** — GC garbage every frame
-- **SpikyScript** — Periodic large frame spikes
+- **Tracker interfaces** (`IFrameTimeSource`, `IMemorySource`, `IScriptSource`, `ISpikeSource`):
+  read-only contracts for each metric, so views and tests depend on abstractions.
+- **Trackers** (`FrameTimeTracker`, `MemoryTracker`, `ScriptTracker`, `SpikeDetector`): collect data
+  from Unity's Profiler API.
+- **Panel views** (`FpsPanelView`, `MemoryPanelView`, `ScriptsPanelView`, `SpikesPanelView`): each
+  owns its UI elements and update logic.
+- **`AutoPopupController`**: decides when the overlay opens and closes by itself.
+- **`PerfGoblinOverlay`**: lays out the panels and handles dragging and visibility.
+- **`PerfGoblinManager`**: initializes everything and runs the update loop.
 
 ## Testing
 
-Unit tests live in the host project under `Assets/Tests/EditMode/`, not in the package itself. This keeps the package lightweight while enabling full test coverage.
+Tests are not shipped with the package. They live in the development project under `Assets/Tests/`.
+Run them from **Window > General > Test Runner**.
 
-To run tests: open **Window > General > Test Runner**, select the **EditMode** tab, and click **Run All**.
+The EditMode tests cover:
 
-Test coverage includes:
-- **RingBuffer** — capacity, wrap-around, indexing, enumeration
-- **ScriptTimingData** — accumulation, status thresholds, peak tracking
-- **AutoPopupController** — FPS/script/spike triggers, manual toggle, edge cases
-- **ScriptTracker/ScriptsPanelView** — class name extraction, name shortening
-- **PerfGoblinConfig** — default values, reset behavior
+- **RingBuffer**: capacity, wrap-around, indexing, and enumeration.
+- **ScriptTimingData**: accumulation, status thresholds, and peak tracking.
+- **AutoPopupController**: FPS, script, and spike triggers, manual toggling, and edge cases.
+- **ScriptTracker / ScriptsPanelView**: class name extraction and name shortening.
+- **PerfGoblinConfig**: default values and reset behavior.
 
-Mock implementations of all tracker interfaces (`MockFrameTimeSource`, `MockScriptSource`, `MockSpikeSource`, `MockMemorySource`) are provided in `Assets/Tests/EditMode/Mocks/`.
+Mocks of every tracker interface are in `Assets/Tests/EditMode/Mocks/`.
 
-## Known Limitations
+## Known limitations
 
-- Main thread profiling only (no Job System / async)
-- No GPU timing (future: FrameTimingManager)
-- No persistent session logging
-- No network overlay for multiplayer
-- No custom panel API
+- Only the main thread is profiled. Jobs and async work are not measured.
+- No GPU timing yet (planned: `FrameTimingManager`).
+- No session logging.
+- No overlay for multiplayer or network stats.
+- No API for custom panels.
 
 ## License
 
-MIT - see [LICENSE](LICENSE.md).
+MIT. See [LICENSE](LICENSE.md).

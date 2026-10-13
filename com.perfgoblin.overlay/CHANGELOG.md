@@ -7,6 +7,8 @@
 
 ### Changed
 - License copyright holder set to Mikael Karlbom.
+- READMEs rewritten for accuracy: complete settings table, real git URL, `PerfGoblinProfiler` as the timing API.
+- Corrected docs, the `PerfGoblinProfiler` XML doc and the Project Settings help text: calls must be wrapped in `#if UNITY_EDITOR || DEVELOPMENT_BUILD`, because PerfGoblin is not compiled into release builds.
 
 ### Fixed
 - The "Demo Scene" sample was missing from the package: `Samples~/DemoScene` did not exist, so Package Manager listed a sample that could not be imported. It now contains `DemoScene.unity` and the stress test scripts (asset GUIDs unchanged).

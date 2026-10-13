@@ -4,12 +4,17 @@ namespace PerfGoblin
 {
     /// <summary>
     /// Public API for manual performance instrumentation.
-    /// Calls are automatically stripped in release builds — no #if wrappers needed.
+    /// Available only in the editor and development builds. Wrap calls in
+    /// <c>#if UNITY_EDITOR || DEVELOPMENT_BUILD</c> so release builds still compile.
     ///
     /// Usage:
+    ///   #if UNITY_EDITOR || DEVELOPMENT_BUILD
     ///   PerfGoblinProfiler.BeginSample("MyMethod");
+    ///   #endif
     ///   // ... your code ...
+    ///   #if UNITY_EDITOR || DEVELOPMENT_BUILD
     ///   PerfGoblinProfiler.EndSample("MyMethod");
+    ///   #endif
     /// </summary>
     public static class PerfGoblinProfiler
     {
