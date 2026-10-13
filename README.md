@@ -120,4 +120,4 @@ Mock implementations of all tracker interfaces (`MockFrameTimeSource`, `MockScri
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE).

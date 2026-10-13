@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `LICENSE` at the repository root; `package.json` now declares `"license": "MIT"`.
+
+### Changed
+- License copyright holder set to Mikael Karlbom.
+
+### Removed
+- Comments that restated the code (XML API docs and rationale comments are unchanged).
+- Committed IDE settings (`.idea/`, including inside the package); these are now git-ignored.
+
 ## [0.2.0] - 2026-05-29
 
 ### Added

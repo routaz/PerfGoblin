@@ -4,6 +4,7 @@
   "displayName": "PerfGoblin",
   "description": "Lightweight development performance overlay for Unity",
   "unity": "2022.3",
+  "license": "MIT",
   "keywords": ["performance", "profiler", "overlay", "debug", "fps"],
   "author": {
     "name": "PerfGoblin"
