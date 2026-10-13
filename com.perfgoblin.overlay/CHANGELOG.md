@@ -8,6 +8,10 @@
 ### Changed
 - License copyright holder set to Mikael Karlbom.
 
+### Fixed
+- The "Demo Scene" sample was missing from the package: `Samples~/DemoScene` did not exist, so Package Manager listed a sample that could not be imported. It now contains `DemoScene.unity` and the stress test scripts (asset GUIDs unchanged).
+- `package.json` version and the overlay's version label still said `0.1.0`; both now match the released `0.2.0`.
+
 ### Removed
 - Comments that restated the code (XML API docs and rationale comments are unchanged).
 - Committed IDE settings (`.idea/`, including inside the package); these are now git-ignored.

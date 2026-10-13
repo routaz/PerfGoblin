@@ -40,6 +40,7 @@ com.perfgoblin.overlay/
 │   └── PerfGoblinPanelSettingsCreator.cs  # Auto-creates PanelSettings asset
 └── Samples~/
     └── DemoScene/
+        ├── DemoScene.unity
         └── StressTestScripts/
             ├── HeavyUpdateScript.cs
             ├── AllocatingScript.cs
@@ -293,7 +294,7 @@ Default: a spike is any frame that takes more than 2x the target frame time (e.g
 perfgoblin-root (.perfgoblin-overlay)
 ├── Header (.pp-header)
 │   ├── "PERFGOBLIN" label
-│   ├── Version label ("v0.1.0")
+│   ├── Version label ("v0.2.0")
 │   └── Minimize button ("—" / "+")
 └── Body (#pp-body) — hidden when minimized
     ├── FPS Panel (#panel-fps)

@@ -4,7 +4,7 @@
     <ui:VisualElement class="pp-header">
       <ui:Label text="PERFGOBLIN" class="pp-title" />
       <ui:VisualElement style="flex-direction: row; align-items: center;">
-        <ui:Label name="pp-version" text="v0.1.0" class="pp-version" />
+        <ui:Label name="pp-version" text="v0.2.0" class="pp-version" />
         <ui:Label name="pp-minimize" text="—" class="pp-minimize-btn" />
       </ui:VisualElement>
     </ui:VisualElement>

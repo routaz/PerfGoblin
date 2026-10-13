@@ -107,3 +107,7 @@ InitTestScene*.unity*
 
 # JetBrains Rider / IntelliJ project settings (any folder)
 .idea/
+
+# Package samples imported into this dev project (source of truth is com.perfgoblin.overlay/Samples~)
+/[Aa]ssets/[Ss]amples/
+/[Aa]ssets/[Ss]amples.meta
