@@ -26,7 +26,6 @@ namespace PerfGoblin
         readonly ScriptTracker _scripts;
         readonly RingBuffer<SpikeEvent> _history;
 
-        // Subsystem profiler recorders for spike attribution
         readonly List<string> _subsystemNames = new();
         readonly List<ProfilerRecorder> _subsystemRecorders = new();
 
@@ -103,34 +102,27 @@ namespace PerfGoblin
             // First valid match per display name wins — order broadest marker first per category
             var candidates = new (ProfilerCategory Cat, string Marker, string Display)[]
             {
-                // Rendering — built-in + SRP/URP/HDRP
                 (ProfilerCategory.Render, "Camera.Render", "Rendering"),
                 (ProfilerCategory.Render, "ScriptableRenderPipeline.Render", "Rendering"),
                 (ProfilerCategory.Render, "RenderPipelineManager.DoRenderLoop_Internal", "Rendering"),
                 (ProfilerCategory.Render, "UniversalRenderPipeline.RenderSingleCameraInternal", "Rendering"),
 
-                // GPU / VSync wait
                 (ProfilerCategory.Render, "Gfx.WaitForPresentOnGfxThread", "GPU/VSync"),
                 (ProfilerCategory.Render, "Gfx.WaitForRenderThread", "GPU/VSync"),
 
-                // Physics
                 (new ProfilerCategory("Physics"), "Physics.Processing", "Physics"),
                 (new ProfilerCategory("Physics"), "FixedUpdate.PhysicsFixedUpdate", "Physics"),
 
-                // UI
                 (new ProfilerCategory("UI"), "UGUI.Rendering", "UI"),
                 (new ProfilerCategory("UI"), "Canvas.SendWillRenderCanvases", "UI"),
                 (ProfilerCategory.Render, "Canvas.SendWillRenderCanvases", "UI"),
 
-                // Animation
                 (new ProfilerCategory("Animation"), "Animators.Update", "Animation"),
                 (new ProfilerCategory("Animation"), "Directors.Update", "Animation"),
 
-                // GC
                 (ProfilerCategory.Memory, "GC.Collect", "GC"),
                 (ProfilerCategory.Memory, "GarbageCollector.CollectIncremental", "GC"),
 
-                // Loading / streaming
                 (new ProfilerCategory("Loading"), "Loading.ReadObject", "Loading"),
                 (new ProfilerCategory("Loading"), "AsyncReadManager.ReadFile", "Loading"),
             };

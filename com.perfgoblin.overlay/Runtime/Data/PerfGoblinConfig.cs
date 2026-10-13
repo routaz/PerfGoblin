@@ -20,37 +20,30 @@ namespace PerfGoblin
     [Serializable]
     public class PerfGoblinConfig
     {
-        // General
         public bool Enabled = true;
         public KeyCode ToggleKey = KeyCode.F3;
         public bool ShowOnPlayModeStart = true;
 
-        // FPS
         public float FpsSmoothingWindow = 0.5f;
         public int FrameHistoryCapacity = 300;
 
-        // Memory
         public int MemorySampleInterval = 30;
         public bool ExcludeEditorOverhead = false;
 
-        // Scripts
         public float ScriptWarnThresholdMs = 1.0f;
         public float ScriptBadThresholdMs = 4.0f;
         public bool AutoDetectScripts = true;
         public int ScriptScanIntervalSeconds = 5;
         public int MaxDisplayedScripts = 10;
 
-        // Spikes
         public float SpikeMultiplier = 2.0f;
         public int SpikeHistoryCapacity = 100;
         public float SpikeDisplayDurationSeconds = 30f;
 
-        // Auto Popup
         public bool AutoPopupOnThreshold = false;
         public float AutoPopupCooldownSeconds = 5f;
         public float AutoDismissSeconds = 0f;
 
-        // Overlay
         public OverlayPosition Position = OverlayPosition.TopRight;
         public bool CompactMode = false;
         public float OverlayOpacity = 0.92f;

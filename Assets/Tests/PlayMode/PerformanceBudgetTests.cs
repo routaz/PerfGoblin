@@ -12,7 +12,7 @@ namespace PerfGoblin.Tests
         const int WarmupFrames = 30;
         const int MeasureFrames = 120;
         const float MaxCpuOverheadMs = 0.5f;
-        const long MaxMemoryBytes = 2 * 1024 * 1024; // 2 MB
+        const long MaxMemoryBytes = 2 * 1024 * 1024;
 
         GameObject _perfGoblinGo;
         PerfGoblinManager _manager;

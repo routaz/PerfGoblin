@@ -30,7 +30,6 @@ namespace PerfGoblin
         bool _pendingVisible;
         bool _initialized;
 
-        // Drag state
         bool _isDragging;
         bool _isDragPositioned;
         Vector2 _dragStartPointerPos;
@@ -38,7 +37,6 @@ namespace PerfGoblin
 
         internal bool IsAutoPopped;
 
-        // Config change tracking
         OverlayPosition _lastAppliedPosition;
         float _lastAppliedScale;
         float _lastAppliedOpacity;

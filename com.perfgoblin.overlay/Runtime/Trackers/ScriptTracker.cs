@@ -166,7 +166,6 @@ namespace PerfGoblin
             _frameStopwatch.Stop();
             _totalScriptTimeMs = (float)_frameStopwatch.Elapsed.TotalMilliseconds;
 
-            // Try ProfilerRecorder for each script individually
             float recorderTotalMs = 0f;
             int recorderHitCount = 0;
             foreach (var kvp in _autoTimings)
@@ -253,11 +252,9 @@ namespace PerfGoblin
                     _sortedResults.Add(kvp.Value);
             }
 
-            // Manual timings always included
             foreach (var kvp in _manualTimings)
                 _sortedResults.Add(kvp.Value);
 
-            // Sort: precise (manual/recorder) first, then by ms descending
             _sortedResults.Sort((a, b) =>
             {
                 if (a.HasPreciseTiming != b.HasPreciseTiming)
